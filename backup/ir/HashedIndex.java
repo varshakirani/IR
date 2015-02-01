@@ -133,7 +133,11 @@ public class HashedIndex implements Index {
 		while(termSize != 0 && resultSize != 0){
 			System.out.print("sortedQuery: ");
 			//printing the query list
-			for(int j =0;j<sortedQuery.size();j++)
+			int sortedQuerySize = 0;
+			if(sortedQuery != null){
+				sortedQuerySize = sortedQuery.size();
+			}
+			for(int j =0;j<sortedQuerySize;j++)
 			{
 				System.out.print(" " + sortedQuery.terms.get(j));
 			}
@@ -141,10 +145,10 @@ public class HashedIndex implements Index {
 			terms = sortedQuery.terms;
 			if(terms != null){
 				termSize = terms.size();
-			}
+			} else termSize = 0;
 			if(result !=null){
 				resultSize = result.size();
-			}
+			} else resultSize = 0;
 		}
 		return result;
 	}
