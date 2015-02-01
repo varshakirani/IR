@@ -131,8 +131,20 @@ public class HashedIndex implements Index {
 			resultSize = result.size();
 		}
 		while(termSize != 0 && resultSize != 0){
+			System.out.print("sortedQuery: ");
+			//printing the query list
+			for(int j =0;j<sortedQuery.size();j++)
+			{
+				System.out.print(" " + sortedQuery.terms.get(j));
+			}
 			result = intersect(result,getPostings(sortedQuery.terms.poll()));
 			terms = sortedQuery.terms;
+			if(terms != null){
+				termSize = terms.size();
+			}
+			if(result !=null){
+				resultSize = result.size();
+			}
 		}
 		return result;
 	}
@@ -177,7 +189,14 @@ public class HashedIndex implements Index {
     	while(swapped == true){
     		swapped = false;
     		for(int i=1;i<n;i++){
-    			System.out.println("Before Swap, I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+    			System.out.println("i = " + i);
+    			//printing the query list
+    			for(int j =0;j<sortedQuery.size();j++)
+    			{
+    				System.out.print(" " + sortedQuery.terms.get(j));
+    			}
+    			
+    			System.out.println("\n Before Swap, I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
     			PostingsList i_1term = index.get(sortedQuery.terms.get(i-1));
     			PostingsList iterm = index.get(sortedQuery.terms.get(i));
     			int i_1termSize = 0;
@@ -195,10 +214,12 @@ public class HashedIndex implements Index {
     				//swap i-1 and i
     				String tmpToken = sortedQuery.terms.get(i-1);
     				Double tmpWeight = sortedQuery.weights.get(i-1);
-    				sortedQuery.terms.add(i-1,sortedQuery.terms.get(i));
-    				sortedQuery.weights.add(i-1,sortedQuery.weights.get(i));
-    				sortedQuery.terms.add(i,tmpToken);
-    				sortedQuery.weights.add(i,tmpWeight);
+    				String ith_tmpToken = sortedQuery.terms.get(i);
+    				Double ith_tmpWeight = sortedQuery.weights.get(i);
+    				sortedQuery.terms.set(i-1,ith_tmpToken);
+    				sortedQuery.weights.set(i-1,ith_tmpWeight);
+    				sortedQuery.terms.set(i,tmpToken);
+    				sortedQuery.weights.set(i,tmpWeight);
     				System.out.println("I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
     				swapped = true;
     			}
