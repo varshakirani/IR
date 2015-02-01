@@ -114,37 +114,26 @@ public class HashedIndex implements Index {
 
 		default:return null;
 		}
-		//		return null;
 	}
 
 	public PostingsList intersectionSearch(Query query){
-		// first implementing basic query search
-		if(query.terms.size() <= 1){
-			PostingsList finalList = null;
-			for (int i =0;i<query.terms.size();i++){
-				String token = query.terms.get(i);
-				finalList = getPostings(token);
-			}
-			System.out.println("Query has single word");
-			return finalList;
-		}
+		System.out.println("inside intersection function");
 		Query sortedQuery = sortByIncreasedFrequency(query);
 		LinkedList<String> terms = sortedQuery.terms;
 		PostingsList result = getPostings(sortedQuery.terms.poll());
-//		sortedQuery.terms.removeFirst();
 		terms = sortedQuery.terms;
-		
-		while(terms.size() != 0 && result.size() != 0){
+		int termSize = 0;
+		int resultSize = 0;
+		if(terms != null){
+			termSize = terms.size();
+		}
+		if(result !=null){
+			resultSize = result.size();
+		}
+		while(termSize != 0 && resultSize != 0){
 			result = intersect(result,getPostings(sortedQuery.terms.poll()));
-//			sortedQuery.terms.removeFirst();
 			terms = sortedQuery.terms;
 		}
-		
-//		System.out.println("Query has more than one word");
-//		PostingsList p1 = getPostings(query.terms.get(0));
-//
-//		PostingsList p2 = getPostings(query.terms.get(1));
-//		PostingsList result = intersect(p1,p2);
 		return result;
 	}
 
@@ -188,7 +177,21 @@ public class HashedIndex implements Index {
     	while(swapped == true){
     		swapped = false;
     		for(int i=1;i<n;i++){
-    			if(index.get(sortedQuery.terms.get(i-1)).size() > index.get(sortedQuery.terms.get(i)).size() ){
+    			System.out.println("Before Swap, I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+    			PostingsList i_1term = index.get(sortedQuery.terms.get(i-1));
+    			PostingsList iterm = index.get(sortedQuery.terms.get(i));
+    			int i_1termSize = 0;
+    			int itermSize = 0;
+    			if(i_1term != null){
+    				 i_1termSize = index.get(sortedQuery.terms.get(i-1)).size();
+    			}
+    			
+    			if(iterm != null)
+    			{
+    				itermSize = index.get(sortedQuery.terms.get(i)).size();
+    			}
+    			
+    			if(i_1termSize > itermSize ){
     				//swap i-1 and i
     				String tmpToken = sortedQuery.terms.get(i-1);
     				Double tmpWeight = sortedQuery.weights.get(i-1);
