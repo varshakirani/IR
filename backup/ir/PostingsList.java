@@ -19,7 +19,7 @@ public class PostingsList implements Serializable {
 	/** The postings list as a linked list. */
 	private LinkedList<PostingsEntry> list = new LinkedList<PostingsEntry>();
 	//	private double score = 0;
-
+	
 	/**  Number of postings in this list  */
 	public int size() {
 		return list.size();
@@ -29,7 +29,10 @@ public class PostingsList implements Serializable {
 	public PostingsEntry get( int i ) {
 		return list.get( i );
 	}
-
+	
+	public LinkedList<PostingsEntry> getPostingsEntry(){
+		return list;
+	}
 	//
 	//  YOUR CODE HERE
 	//
@@ -71,6 +74,23 @@ public class PostingsList implements Serializable {
 		}
 		return false;
 	}
+	
+	public void printDocID(){
+		for(PostingsEntry entry: list){
+			System.out.print(entry.getdocID() + " ");
+		}
+		System.out.println("");
+	}
+	
+	public void addPostingEntry(int docID){
+		PostingsEntry entry = new PostingsEntry();
+		// TODO update score as well
+		entry.setdocID(docID);
+		list.add(entry);
+	}
+	
+	
+	
 
 }
 

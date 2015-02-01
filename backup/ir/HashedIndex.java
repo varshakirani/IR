@@ -12,6 +12,8 @@ package ir;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.Map;
@@ -38,7 +40,7 @@ public class HashedIndex implements Index {
 		PostingsList postingsList = index.get(token);
 		if(postingsList != null){
 			//			System.out.println("not new token");
-			
+
 			//Should check whether docID is already present in the postingsList
 			if(postingsList.isDocPresent(docID)){
 				return;
@@ -87,7 +89,9 @@ public class HashedIndex implements Index {
 		//
 		PostingsList postingsList = index.get(token);
 		if(postingsList != null){
-			System.out.println("token: "+token+" list size: "+ index.get(token).size());
+			//			System.out.println("token: "+token+" list size: "+ index.get(token).size());
+			System.out.println("for token: "+token);
+			postingsList.printDocID();
 			return postingsList;
 		}
 		return null;
@@ -115,14 +119,90 @@ public class HashedIndex implements Index {
 
 	public PostingsList intersectionSearch(Query query){
 		// first implementing basic query search
-		PostingsList finalList = null;
-		for (int i =0;i<query.terms.size();i++){
-			String token = query.terms.get(i);
-			finalList = getPostings(token);
+		if(query.terms.size() <= 1){
+			PostingsList finalList = null;
+			for (int i =0;i<query.terms.size();i++){
+				String token = query.terms.get(i);
+				finalList = getPostings(token);
+			}
+			System.out.println("Query has single word");
+			return finalList;
 		}
-		return finalList;
+		Query sortedQuery = sortByIncreasedFrequency(query);
+		LinkedList<String> terms = sortedQuery.terms;
+		PostingsList result = getPostings(sortedQuery.terms.poll());
+//		sortedQuery.terms.removeFirst();
+		terms = sortedQuery.terms;
+		
+		while(terms.size() != 0 && result.size() != 0){
+			result = intersect(result,getPostings(sortedQuery.terms.poll()));
+//			sortedQuery.terms.removeFirst();
+			terms = sortedQuery.terms;
+		}
+		
+//		System.out.println("Query has more than one word");
+//		PostingsList p1 = getPostings(query.terms.get(0));
+//
+//		PostingsList p2 = getPostings(query.terms.get(1));
+//		PostingsList result = intersect(p1,p2);
+		return result;
 	}
 
+	public PostingsList intersect(PostingsList p1, PostingsList p2){
+		PostingsList answer = new PostingsList();
+		LinkedList<PostingsEntry> p1List = p1.getPostingsEntry();
+		LinkedList<PostingsEntry> p2List = p2.getPostingsEntry();
+		ListIterator<PostingsEntry> p1It = p1List.listIterator();
+		ListIterator<PostingsEntry> p2It = p2List.listIterator();
+		
+		
+		while(p1It.hasNext()  && p2It.hasNext()){
+		int p1docID = p1It.next().getdocID();
+		int p2docID = p2It.next().getdocID();
+		p1It.previous();
+		p2It.previous();
+			if(p1docID == p2docID ){
+				answer.addPostingEntry(p1docID);
+				p1It.next();
+				p2It.next();
+			}
+			else if(p1docID < p2docID){
+				p1It.next();
+			}
+			else {
+				p2It.next();
+			}
+
+		}
+		if(answer.size() != 0){
+			return answer;	
+		}
+		
+		return null;
+	}
+    public Query sortByIncreasedFrequency(Query query){
+    	Query sortedQuery = query.copy();
+    	int n = query.terms.size();
+    	//doing bubble sort
+    	boolean swapped = true;
+    	while(swapped == true){
+    		swapped = false;
+    		for(int i=1;i<n;i++){
+    			if(index.get(sortedQuery.terms.get(i-1)).size() > index.get(sortedQuery.terms.get(i)).size() ){
+    				//swap i-1 and i
+    				String tmpToken = sortedQuery.terms.get(i-1);
+    				Double tmpWeight = sortedQuery.weights.get(i-1);
+    				sortedQuery.terms.add(i-1,sortedQuery.terms.get(i));
+    				sortedQuery.weights.add(i-1,sortedQuery.weights.get(i));
+    				sortedQuery.terms.add(i,tmpToken);
+    				sortedQuery.weights.add(i,tmpWeight);
+    				System.out.println("I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+    				swapped = true;
+    			}
+    		}
+    	}
+    	return sortedQuery;
+    }
 	/**
 	 *  No need for cleanup in a HashedIndex.
 	 */

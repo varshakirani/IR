@@ -38,6 +38,9 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     public void setScore(double score){
     	this.score = score;
     }
+    public void setdocID(int docId){
+    	this.docID = docId;
+    }
     public int getdocID(){
     	return this.docID;
     }

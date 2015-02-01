@@ -49,6 +49,7 @@ public class Query {
 	return queryCopy;
     }
     
+    
     /**
      *  Expands the Query using Relevance Feedback
      */
