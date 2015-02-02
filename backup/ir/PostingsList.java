@@ -18,6 +18,7 @@ public class PostingsList implements Serializable {
 
 	/** The postings list as a linked list. */
 	private LinkedList<PostingsEntry> list = new LinkedList<PostingsEntry>();
+	
 	//	private double score = 0;
 	
 	/**  Number of postings in this list  */
@@ -30,27 +31,32 @@ public class PostingsList implements Serializable {
 		return list.get( i );
 	}
 	
-	public LinkedList<PostingsEntry> getPostingsEntry(){
-		return list;
-	}
 	//
 	//  YOUR CODE HERE
 	//
 
+	public LinkedList<PostingsEntry> getPostingsEntry(){
+		return list;
+	}
+
+	
+	
+
 	//constructor of postingslist... to pass docID and score to postingsEntry
 
-	public void updateList(int docID, double score){
+	public void updateList(int docID, double score,int offset){
 		PostingsEntry posEntry = new PostingsEntry();
 		posEntry.setPostingsEntry(docID,score);	
-		System.out.println("from Entries: docID=" + posEntry.getdocID()+" score= "+posEntry.getScore());
+//		System.out.println("from Entries: docID=" + posEntry.getdocID()+" score= "+posEntry.getScore());
+		posEntry.addPosition(offset);
 		list.add(posEntry);
 	}
 	public PostingsList(){
 		//do nothing
 	}
-	public PostingsList(int docID, double score){
+	public PostingsList(int docID, double score, int offset){
 
-		updateList(docID,score);
+		updateList(docID,score,offset);
 
 	}
 
@@ -58,22 +64,25 @@ public class PostingsList implements Serializable {
 	//    private int docID;
 	//    private double score;
 	//    
-	public boolean isDocPresent(int docID){
+	public boolean isDocPresent(int docID,int offset){
 		for(PostingsEntry entry: list){
 			if(docID == entry.getdocID()){
 
 				//increase the score (number of hits) 
 				//TO DO Make this hits according to docIDs... now it is global  --- check whether it is correct
 
-				double score = entry.getScore();
-				score++;
-				entry.setScore(score);
+//				double score = entry.getScore();
+//				score++;
+//				entry.setScore(score);
+				entry.addPosition(offset);
 				
 				return true;
 			}
 		}
 		return false;
 	}
+	
+	
 	
 	public void printDocID(){
 		for(PostingsEntry entry: list){
@@ -82,10 +91,11 @@ public class PostingsList implements Serializable {
 		System.out.println("");
 	}
 	
-	public void addPostingEntry(int docID){
+	public void addPostingEntry(int docID, int offset){
 		PostingsEntry entry = new PostingsEntry();
 		// TODO update score as well
 		entry.setdocID(docID);
+		entry.addPosition(offset);
 		list.add(entry);
 	}
 	

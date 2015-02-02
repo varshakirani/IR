@@ -9,6 +9,7 @@
 package ir;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 
 public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     
@@ -30,7 +31,13 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     //
     //  YOUR CODE HERE
     //
-    
+    private LinkedList<Integer> positionsList = new LinkedList<Integer>(); 
+    public LinkedList<Integer> getPositionsList() {
+		return positionsList;
+	}
+    public void addPosition(int offset){
+    	this.positionsList.add(offset);
+    }
     public void setPostingsEntry(int docID,double score){
     	this.docID = docID;
     	this.score = score;
