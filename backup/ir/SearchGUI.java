@@ -27,7 +27,7 @@ import javax.swing.event.*;
 public class SearchGUI extends JFrame {
 
     /**  The indexer creating the search index. */
-    Indexer indexer = new Indexer();
+     static Indexer indexer = new Indexer();
 
     /**  The query posed by the user, used in search() and relevanceFeedbackSearch() */
     private Query query; 
@@ -252,6 +252,7 @@ public class SearchGUI extends JFrame {
 		public void actionPerformed( ActionEvent e ) {
 		    resultWindow.setText( "\n  Saving index..." );
 		    indexer.index.cleanup();
+		    largeIndex();
 		    System.exit( 0 );
 		}
 	    };
@@ -348,8 +349,17 @@ public class SearchGUI extends JFrame {
 		indexer.processFiles( dokDir );
 	    }
 	    resultWindow.setText( "\n  Done!" );
+	    if(secMethod)
+	    {
+	    	indexer.index.writeIntoMapping();
+	    }
 	}
     };
+    
+    private void largeIndex(){
+    	System.out.println("Retrieving inverted index from disk");
+//    	indexer.writeToDisk();
+    }
 
 
     /* ----------------------------------------------- */
@@ -360,8 +370,8 @@ public class SearchGUI extends JFrame {
      */
     private void decodeArgs( String[] args ) {
 	int i=0, j=0;
-	String arg = "/home/varsha/KTH courses/Search Engine And Information Retrieval/Assignments/LAB1/IR/davisWiki/davisWiki";
-	dirNames.add(arg);
+	//String arg = "/home/varsha/KTH courses/Search Engine And Information Retrieval/Assignments/LAB1/IR/davisWiki/davisWiki";
+	//dirNames.add(arg);
 	while ( i < args.length ) {
 	    if ( "-d".equals( args[i] )) {
 		i++;
@@ -379,12 +389,47 @@ public class SearchGUI extends JFrame {
 
     /* ----------------------------------------------- */
 
-
+    public static boolean savedIndex(){
+    	File file = new File(homeDir+"/SavedIndex/");
+    	if(file.isDirectory()){
+    		if(file.list().length>0){
+    			System.out.println("Already Saved Index");
+    			
+    			return false;
+    		}
+    		else{
+    			System.out.println("Save the inverted index on to disk");
+    			return true;
+    		}
+    	}
+    	else{
+    		System.out.println("This is not a directory");
+    	}
+    	return false;
+    }
+    static boolean secMethod = true;
     public static void main( String[] args ) {
 	SearchGUI s = new SearchGUI();
-	s.createGUI();
-	s.decodeArgs( args );
-	s.index();
+	
+	if(secMethod){
+		indexer = new Indexer(true);
+		s.createGUI();
+		if(savedIndex()){
+			
+			s.decodeArgs( args );
+			s.index();
+		}
+		
+	}
+	else{
+		indexer = new Indexer();
+
+		s.createGUI();
+		s.decodeArgs( args );
+		s.index();
+	}
+	
+	
     }
 
 }

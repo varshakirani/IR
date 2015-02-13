@@ -17,6 +17,7 @@ import java.util.ListIterator;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.Map;
+import java.util.TreeSet;
 
 
 /**
@@ -34,6 +35,7 @@ public class HashedIndex implements Index {
 	public void insert( String token, int docID, int offset ) {
 		// if already token is present, only docID has to appended to the token
 //		double score = 0;
+//		System.out.println("docID" + docID);
 		PostingsList postingsList = index.get(token);
 		if(postingsList != null){
 			//Should check whether docID is already present in the postingsList, 
@@ -62,9 +64,11 @@ public class HashedIndex implements Index {
 	 * Sorts the indexs according to tokens 
 	 * */
 	public void sortDict(){
-		Map<String, PostingsList> map = new TreeMap <String, PostingsList>(index);
-		//		SortedSet<String> keys = new TreeSet<String>(index.keySet());
-		//		index = map;
+//		sortedKeys = new TreeSet<String>(index.keySet());
+	}
+	
+	public int indexSize(){
+		return index.keySet().size();
 	}
 	/**
 	 *  Returns all the words in the index.
@@ -74,7 +78,8 @@ public class HashedIndex implements Index {
 		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
 		//
 		if (index.keySet() != null){
-			return index.keySet().iterator();
+			return new TreeSet<String>(index.keySet()).iterator();
+//			return index.keySet().iterator();
 		}
 		return null;
 	}
@@ -355,5 +360,11 @@ public class HashedIndex implements Index {
 	 *  No need for cleanup in a HashedIndex.
 	 */
 	public void cleanup() {
+	}
+
+	@Override
+	public void writeIntoMapping() {
+		// TODO Auto-generated method stub
+		
 	}
 }

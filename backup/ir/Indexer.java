@@ -19,10 +19,15 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Iterator;
+import java.util.ListIterator;
+
 import org.apache.pdfbox.cos.COSDocument;
 import org.apache.pdfbox.pdfparser.*;
 import org.apache.pdfbox.util.PDFTextStripper;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 
 
 /**
@@ -33,6 +38,7 @@ public class Indexer {
 	/** The index to be built up by this indexer. */
 	public Index index;
 
+	public BigIndex bigindex;
 	/** The next docID to be generated. */
 	private int lastDocID = 0;
 
@@ -59,6 +65,17 @@ public class Indexer {
 	 */
 	public Indexer() {
 		index = new HashedIndex();
+//		bigindex = new LargeIndex();
+	}
+	public void setIndexer(boolean saveIndex){
+		if(saveIndex){
+			index = new LargeIndex();
+		}
+	}
+	public Indexer(boolean saveIndex){
+		if(saveIndex){
+			index = new LargeIndex();
+		}
 	}
 
 
@@ -168,6 +185,101 @@ public class Indexer {
 	 */
 	public void insertIntoIndex( int docID, String token, int offset ) {
 		index.insert( token, docID, offset );
+		
+//		bigindex.insert(token, docID, offset);
+	}
+	
+	public void writeToDisk(){
+		try {
+			int noOfFiles = 100;
+			String homeDir = "/home/varsha/KTH courses/Search Engine And Information Retrieval/Assignments/LAB1/IR";
+			File mapFile = new File(homeDir+"/SavedIndex/"+"mapFile.txt");
+			if(!mapFile.exists()){
+				mapFile.createNewFile();
+			}
+			
+			int noOfTokens = index.indexSize();
+			Iterator<String> tokenIt = index.getDictionary();
+			int tokensPerDoc =  (noOfTokens/noOfFiles);
+			if(noOfTokens%noOfFiles != 0)
+			{
+				tokensPerDoc++;
+			}
+			int tokenIndex = 0;
+			
+			System.out.println("Total no of tokens:" + noOfTokens + "total no of files: " + noOfFiles);
+			System.out.println("MaxTokensPerDoc: "+ tokensPerDoc);
+//			for(int tokenIndex =0;tokenIndex<noOfTokens;tokenIndex++ ){
+//				for(int t =0;t<tokensPerDoc;t++){
+//					
+//				}
+//			}
+			for(int fileNo =0;fileNo<noOfFiles;fileNo++){
+				String fileName = fileNo+".txt";
+				File file = new File(homeDir+"/SavedIndex/"+fileName);
+				if(!file.exists()){
+					System.out.println(file.getName()+ file.getPath());
+					
+					file.createNewFile();
+					System.out.println("File created");
+				}
+				FileWriter fw = new FileWriter(file.getAbsoluteFile());
+				BufferedWriter bw = new BufferedWriter(fw);
+				String content = "";
+				for(int tokenNo = 0;tokenNo<tokensPerDoc;tokenNo++){
+					if(tokenIndex < noOfTokens){
+						if(tokenIt.hasNext()){
+							String token = tokenIt.next();
+							content = token + "\r\n" ;
+							for(PostingsEntry entry: index.getPostings(token).getPostingsEntry()){
+								content += " " + entry.docID + " ";
+//								for(int pos:entry.getPositionsList()){
+//									content += pos + " ";
+//								}
+								content += entry.getPositionsList().toString();
+								content += "\r\n" ;
+							}
+							
+						}
+						
+						tokenIndex++;
+						fw.write(content);
+					}
+					else {
+						break;
+					}
+					
+				}
+//				for(int tokenNo = 0;tokenNo<tokensPerDoc;tokenNo++){
+//					if(tokenIndex < noOfTokens){
+//						if(tokenIt.hasNext())
+//						{
+//							String token = tokenIt.next();
+//							content +=  token +"\r\n";
+//							for(PostingsEntry entry: index.getPostings(token).getPostingsEntry()){
+//								content += entry.docID + " ";
+//								for(Integer pos:entry.getPositionsList()){
+//									content += pos + " ";
+//								}
+//								content += "\r\n";
+//							}
+//						}
+//						tokenIndex++;
+//					}
+//					else {
+//						break;
+//					}
+//				}
+//				content = "Testing";
+//				fw.write(content);
+//				bw.write(content);
+				fw.close();
+			}
+		}
+		catch(IOException e){
+			e.printStackTrace();
+		}
+		
 	}
 }
 
