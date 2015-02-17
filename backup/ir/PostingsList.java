@@ -26,6 +26,9 @@ public class PostingsList implements Serializable {
 		return list.size();
 	}
 
+	public int getDocumentFrequency(){
+		return list.size();
+	}
 	/**  Returns the ith posting */
 	public PostingsEntry get( int i ) {
 		return list.get( i );

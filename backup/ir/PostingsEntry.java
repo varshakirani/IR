@@ -15,6 +15,7 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     
     public int docID;
     public double score;
+    public int frequency;
 
     /**
      *  PostingsEntries are compared by their score (only relevant 
@@ -55,6 +56,13 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     	return this.score;
     }
     
+    public int getFrequency(){
+    	return positionsList.size();    //PositionList maintains the offsets of a particular term in that document
+    }
+    
+    public void setFrequency(int frq){
+    	frequency = frq;
+    }
     public void printVariables(){
     	System.out.println(score+' '+docID);
     }

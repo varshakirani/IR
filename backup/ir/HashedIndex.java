@@ -28,7 +28,13 @@ public class HashedIndex implements Index {
 	/** The index as a hashtable. */
 	private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
 
-
+	int noOfCollection = 0;
+	public void setNoOfCollection(int num){
+		noOfCollection = num;
+	}
+	public int getNoOfCollection(){
+		return noOfCollection;
+	}
 	/**
 	 *  Inserts this token in the index.
 	 */
@@ -118,6 +124,12 @@ public class HashedIndex implements Index {
 		}
 		LinkedList<String> terms = sortedQuery.terms;
 		PostingsList result = getPostings(sortedQuery.terms.poll());
+		if(queryType == 2){
+			System.out.println(query.terms);
+			cosineScore(query.terms,result);
+		
+		}
+		
 		terms = sortedQuery.terms;
 		int termSize = 0;
 		int resultSize = 0;
@@ -127,6 +139,18 @@ public class HashedIndex implements Index {
 		if(result !=null){
 			resultSize = result.size();
 		}
+//		if(queryType == 2){
+//			result = intersect(result,getPostings(sortedQuery.terms.poll()));	
+//			terms = sortedQuery.terms;
+//			if(terms != null){
+//				termSize = terms.size();
+//			} else termSize = 0;
+//			if(result !=null){
+//				resultSize = result.size();
+//			} else resultSize = 0;
+//			cosineScore(query.terms,result);
+//			return result;
+//		}
 		while(termSize != 0 && resultSize != 0){
 			System.out.print("sortedQuery: ");
 			//printing the query list
@@ -142,20 +166,39 @@ public class HashedIndex implements Index {
 			// calling intersection function for different querytypes
 			if(queryType == 0){
 				result = intersect(result,getPostings(sortedQuery.terms.poll()));	
+				terms = sortedQuery.terms;
+				if(terms != null){
+					termSize = terms.size();
+				} else termSize = 0;
+				if(result !=null){
+					resultSize = result.size();
+				} else resultSize = 0;
 			}
 			else if(queryType == 1){
 				result = phraseIntersect(result,getPostings(sortedQuery.terms.poll()));
+				terms = sortedQuery.terms;
+				if(terms != null){
+					termSize = terms.size();
+				} else termSize = 0;
+				if(result !=null){
+					resultSize = result.size();
+				} else resultSize = 0;
 			}
-			terms = sortedQuery.terms;
-			if(terms != null){
-				termSize = terms.size();
-			} else termSize = 0;
-			if(result !=null){
-				resultSize = result.size();
-			} else resultSize = 0;
-		}
-
+			else if(queryType == 2){
+				result = intersect(result,getPostings(sortedQuery.terms.poll()));	
+				terms = sortedQuery.terms;
+				if(terms != null){
+					termSize = terms.size();
+				} else termSize = 0;
+				if(result !=null){
+					resultSize = result.size();
+				} else resultSize = 0;
+				cosineScore(query.terms,result);
+			}
 		
+		}
+		for(String term : query.terms){
+		System.out.println("Document Frequency:"+getPostings(term).getDocumentFrequency()+"Frequency of first token indexed"+getPostings(term).getPostingsEntry().getFirst().getFrequency());}
 		return result;
 //		
 //		switch(queryType){
@@ -163,6 +206,52 @@ public class HashedIndex implements Index {
 //		case 1: return phraseSearch(query);
 //		default:return null;
 //		}
+	}
+	
+	public void cosineScore(LinkedList<String> terms , PostingsList naiveResult){
+		int N = naiveResult.size();
+		HashMap<Integer,Integer> Scores = new HashMap<Integer,Integer>();
+		HashMap<Integer,Integer> Length = new HashMap<Integer,Integer>();
+		HashMap<String,Integer> termFq = new HashMap<String,Integer>();
+		System.out.println(terms);
+		//term frequency
+		for(String term :terms){
+			System.out.println("hello");
+			if(termFq.containsKey(term)){
+				termFq.put(term,termFq.get(term)+1);
+			}
+			else{
+				termFq.put(term, 1);
+			}
+		}
+		//cosineScore algorithm
+		for(String term:terms){
+			//compute w(term,q)
+			
+			int tf_tq = 0;
+			double w_tq = 0;
+			if(termFq.containsKey(term)){
+				tf_tq = termFq.get(term);
+				
+				PostingsList queryPosList = getPostings(term);
+				w_tq = tf_tq * Math.log10(N/queryPosList.size());  //queryPosList.size() is the document frequency
+				int scoreTmp = 0;
+				for(PostingsEntry entry:queryPosList.getPostingsEntry()){
+					int wf_td = entry.getFrequency();
+					scoreTmp += wf_td * w_tq;
+
+					if(Scores.containsKey(entry.docID)){
+						
+						Scores.put(entry.docID,scoreTmp);
+					}
+					else{
+						Scores.put(entry.docID, 0);
+					}
+				}
+			}
+			
+			
+		}
 	}
 	public PostingsList phraseSearch(Query query){
 		System.out.println("Inside phraseSearch function");

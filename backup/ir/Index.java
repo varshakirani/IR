@@ -43,6 +43,7 @@ public interface Index {
     public void cleanup();
     public int indexSize();
     public void writeIntoMapping();
+    public void setNoOfCollection(int num);
 
 }
 		    

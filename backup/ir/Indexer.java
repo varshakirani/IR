@@ -59,6 +59,7 @@ public class Indexer {
 
 	/* ----------------------------------------------- */
 
+	
 
 	/**
 	 *  Initializes the index as a HashedIndex.
@@ -148,6 +149,7 @@ public class Indexer {
 
 					}
 					 */
+					index.setNoOfCollection(lastDocID);  //after reading all the files, last DocID will be the total number of collection
 					reader.close();
 				}
 				catch ( IOException e ) {

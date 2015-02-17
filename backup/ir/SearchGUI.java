@@ -407,7 +407,7 @@ public class SearchGUI extends JFrame {
     	}
     	return false;
     }
-    static boolean secMethod = true;
+    static boolean secMethod = false;
     public static void main( String[] args ) {
 	SearchGUI s = new SearchGUI();
 	
