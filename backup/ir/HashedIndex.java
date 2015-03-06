@@ -10,6 +10,12 @@
 
 package ir;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -18,6 +24,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.Map;
 import java.util.TreeSet;
+
+import com.ibm.icu.text.Collator;
 
 
 /**
@@ -28,6 +36,11 @@ public class HashedIndex implements Index {
 	/** The index as a hashtable. */
 	private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
 
+	public HashedIndex() {
+		// TODO Auto-generated constructor stub
+		readPageRank();
+	}
+	public HashMap<Integer,Double> pageRankList = new HashMap<Integer,Double>();
 	int noOfCollection = 0;
 	public void setNoOfCollection(int num){
 		noOfCollection = num;
@@ -40,8 +53,8 @@ public class HashedIndex implements Index {
 	 */
 	public void insert( String token, int docID, int offset ) {
 		// if already token is present, only docID has to appended to the token
-//		double score = 0;
-//		System.out.println("docID" + docID);
+		//		double score = 0;
+		//		System.out.println("docID" + docID);
 		PostingsList postingsList = index.get(token);
 		if(postingsList != null){
 			//Should check whether docID is already present in the postingsList, 
@@ -51,12 +64,12 @@ public class HashedIndex implements Index {
 				entry.addPosition(offset);
 				return;
 			}
-//			if(postingsList.isDocPresent(docID,offset)){
-//				return;
-//			}
+			//			if(postingsList.isDocPresent(docID,offset)){
+			//				return;
+			//			}
 			else{
 				postingsList.updateList(docID, 0,offset);
-				
+
 			}
 		}
 		else {
@@ -64,15 +77,16 @@ public class HashedIndex implements Index {
 		}
 		index.put(token,postingsList);
 		//		System.out.println("token: "+token+" list size: "+ index.get(token).size());
+		
 	}
 
 	/**
 	 * Sorts the indexs according to tokens 
 	 * */
 	public void sortDict(){
-//		sortedKeys = new TreeSet<String>(index.keySet());
+		//		sortedKeys = new TreeSet<String>(index.keySet());
 	}
-	
+
 	public int indexSize(){
 		return index.keySet().size();
 	}
@@ -85,11 +99,34 @@ public class HashedIndex implements Index {
 		//
 		if (index.keySet() != null){
 			return new TreeSet<String>(index.keySet()).iterator();
-//			return index.keySet().iterator();
+			//			return index.keySet().iterator();
 		}
 		return null;
 	}
 
+	public void readPageRank(){
+		try{
+			System.out.println("inside read page");
+			String homeDir = "/home/varsha/KTH courses/Search Engine And Information Retrieval/Assignments/LAB1/IR/src/pagerank";
+			File file = new File(homeDir+"pageRankCompleteList.txt");
+			int docID;
+			double pageRank;
+			if(file.exists()){
+				FileReader fr = new FileReader(file);
+				BufferedReader br = new BufferedReader(fr);
+				String line;
+				while((line = br.readLine()) != null ){
+					String[] parts = line.split(":");
+					docID = Integer.parseInt(parts[0]);
+					pageRank = Double.parseDouble(parts[1]);
+					pageRankList.put(docID, pageRank);
+				}
+			}
+		}
+		catch(IOException e){
+			
+		}
+	}
 
 	/**
 	 *  Returns the postings for a specific term, or null
@@ -99,10 +136,11 @@ public class HashedIndex implements Index {
 		// 
 		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
 		//
-		PostingsList postingsList = index.get(token);
+		PostingsList postingsList = new PostingsList(index.get(token));
+//		PostingsList postingsList = index.get(token);
 		if(postingsList != null){
 			//			System.out.println("token: "+token+" list size: "+ index.get(token).size());
-//			System.out.println("for token: "+token);
+			//			System.out.println("for token: "+token);
 			postingsList.printDocID();
 			return postingsList;
 		}
@@ -117,19 +155,41 @@ public class HashedIndex implements Index {
 		//QueryType = 0 Intersection Query
 		//QueryType = 1 Phrase Query
 		//QueryType = 2 Ranked Retrieval
-
+//		readPageRank();
 		Query sortedQuery = query;
 		if(queryType == 0){
 			sortedQuery = sortByIncreasedFrequency(query);
 		}
 		LinkedList<String> terms = sortedQuery.terms;
+		LinkedList<String> completeTerms =(LinkedList<String>) sortedQuery.terms.clone();
 		PostingsList result = getPostings(sortedQuery.terms.poll());
-		if(queryType == 2){
-			System.out.println(query.terms);
-			cosineScore(query.terms,result);
-		
+		for(PostingsEntry entry:result.getPostingsEntry()){
+			
+			System.out.println(entry.docID + "   " + entry.getScore());
+			
 		}
-		
+		if(queryType == 2){
+			if(rankingType == Index.TF_IDF){
+				PostingsList rankedResult = new PostingsList();
+				rankedResult = cosineScore(completeTerms,rankedResult,false);
+				Collections.sort(rankedResult.getPostingsEntry());
+				return rankedResult;
+			}
+			else if (rankingType == Index.PAGERANK){
+				PostingsList rankedResult = new PostingsList();
+				rankedResult = pageRankAlone(completeTerms,rankedResult);
+				Collections.sort(rankedResult.getPostingsEntry());
+				return rankedResult;
+			}
+			else if (rankingType == Index.COMBINATION){
+				PostingsList rankedResult = new PostingsList();
+				rankedResult = cosineScore(completeTerms,rankedResult,true);
+				Collections.sort(rankedResult.getPostingsEntry());
+				return rankedResult;
+			}
+			
+		}	
+
 		terms = sortedQuery.terms;
 		int termSize = 0;
 		int resultSize = 0;
@@ -139,18 +199,7 @@ public class HashedIndex implements Index {
 		if(result !=null){
 			resultSize = result.size();
 		}
-//		if(queryType == 2){
-//			result = intersect(result,getPostings(sortedQuery.terms.poll()));	
-//			terms = sortedQuery.terms;
-//			if(terms != null){
-//				termSize = terms.size();
-//			} else termSize = 0;
-//			if(result !=null){
-//				resultSize = result.size();
-//			} else resultSize = 0;
-//			cosineScore(query.terms,result);
-//			return result;
-//		}
+
 		while(termSize != 0 && resultSize != 0){
 			System.out.print("sortedQuery: ");
 			//printing the query list
@@ -162,7 +211,7 @@ public class HashedIndex implements Index {
 			{
 				System.out.print(" " + sortedQuery.terms.get(j));
 			}
-			
+
 			// calling intersection function for different querytypes
 			if(queryType == 0){
 				result = intersect(result,getPostings(sortedQuery.terms.poll()));	
@@ -184,39 +233,49 @@ public class HashedIndex implements Index {
 					resultSize = result.size();
 				} else resultSize = 0;
 			}
-			else if(queryType == 2){
-				result = intersect(result,getPostings(sortedQuery.terms.poll()));	
-				terms = sortedQuery.terms;
-				if(terms != null){
-					termSize = terms.size();
-				} else termSize = 0;
-				if(result !=null){
-					resultSize = result.size();
-				} else resultSize = 0;
-				cosineScore(query.terms,result);
-			}
-		
+
 		}
 		for(String term : query.terms){
-		System.out.println("Document Frequency:"+getPostings(term).getDocumentFrequency()+"Frequency of first token indexed"+getPostings(term).getPostingsEntry().getFirst().getFrequency());}
+			System.out.println("Document Frequency:"+getPostings(term).getDocumentFrequency()+"Frequency of first token indexed"+getPostings(term).getPostingsEntry().getFirst().getFrequency());}
+
 		return result;
-//		
-//		switch(queryType){
-//		case 0: return intersectionSearch(query);
-//		case 1: return phraseSearch(query);
-//		default:return null;
-//		}
-	}
 	
-	public void cosineScore(LinkedList<String> terms , PostingsList naiveResult){
-		int N = naiveResult.size();
-		HashMap<Integer,Integer> Scores = new HashMap<Integer,Integer>();
-		HashMap<Integer,Integer> Length = new HashMap<Integer,Integer>();
+	}
+
+	public PostingsList pageRankAlone(LinkedList<String> queryTerms,PostingsList rankedResult){
+		HashMap<Integer,Double> ScoreList = new HashMap<Integer,Double>();
+		for(String term:queryTerms){
+			PostingsList termPos = getPostings(term);
+			double scoreTmp = 0.0;
+			for(PostingsEntry entry:termPos.getPostingsEntry()){
+				scoreTmp += pageRankList.get(entry.docID);
+				if(ScoreList.containsKey(entry.docID)){
+					scoreTmp += ScoreList.get(entry.docID);
+					
+					ScoreList.put(entry.docID,scoreTmp);
+				}
+				else{
+					
+					ScoreList.put(entry.docID,scoreTmp);
+				}
+				scoreTmp = 0;
+			}
+			for(Integer docID:ScoreList.keySet())
+			{
+//				Double ScoreVal= ScoreList.get(docID)/ (double) docLengths.get(""+docID);
+//				ScoreList.put(docID, ScoreVal);
+				rankedResult.updateList(docID, ScoreList.get(docID), 0);			
+			}
+		}
+		return rankedResult;
+	}
+	public PostingsList cosineScore(LinkedList<String> queryTerms,PostingsList rankedResult,boolean combined )
+	{
 		HashMap<String,Integer> termFq = new HashMap<String,Integer>();
-		System.out.println(terms);
 		//term frequency
-		for(String term :terms){
-			System.out.println("hello");
+
+		HashMap<Integer,Double> ScoreList = new HashMap<Integer,Double>();
+		for(String term : queryTerms){
 			if(termFq.containsKey(term)){
 				termFq.put(term,termFq.get(term)+1);
 			}
@@ -224,46 +283,49 @@ public class HashedIndex implements Index {
 				termFq.put(term, 1);
 			}
 		}
-		//cosineScore algorithm
-		for(String term:terms){
-			//compute w(term,q)
+
+		double N = 20000;
+		for(String term : queryTerms){
 			
-			int tf_tq = 0;
+			double termFreq = 0;
 			double w_tq = 0;
 			if(termFq.containsKey(term)){
-				tf_tq = termFq.get(term);
-				
-				PostingsList queryPosList = getPostings(term);
-				w_tq = tf_tq * Math.log10(N/queryPosList.size());  //queryPosList.size() is the document frequency
-				int scoreTmp = 0;
-				for(PostingsEntry entry:queryPosList.getPostingsEntry()){
-					int wf_td = entry.getFrequency();
+				termFreq = termFq.get(term);
+				PostingsList termPos = getPostings(term);
+				System.out.println(termPos.size());
+				double docFreq = termPos.size();
+				w_tq = termFreq * Math.log(N/docFreq);
+				double scoreTmp = 0;
+				for(PostingsEntry entry:termPos.getPostingsEntry()){
+					double wf_td = entry.getFrequency();
 					scoreTmp += wf_td * w_tq;
-
-					if(Scores.containsKey(entry.docID)){
+					if(combined){
+						scoreTmp += pageRankList.get(entry.docID);
+					}
+					if(ScoreList.containsKey(entry.docID)){
+						scoreTmp += ScoreList.get(entry.docID);
 						
-						Scores.put(entry.docID,scoreTmp);
+						ScoreList.put(entry.docID,scoreTmp);
 					}
 					else{
-						Scores.put(entry.docID, 0);
+						
+						ScoreList.put(entry.docID,scoreTmp);
 					}
+					scoreTmp = 0;
 				}
+
 			}
-			
-			
 		}
+		for(Integer docID:ScoreList.keySet())
+		{
+			Double ScoreVal= ScoreList.get(docID)/ (double) docLengths.get(""+docID);
+			ScoreList.put(docID, ScoreVal);
+			rankedResult.updateList(docID, ScoreList.get(docID), 0);			
+		}
+
+		return rankedResult;
 	}
-	public PostingsList phraseSearch(Query query){
-		System.out.println("Inside phraseSearch function");
-		PostingsList result = null;
-		LinkedList<String> terms = query.terms;
-		PostingsList p1 = getPostings(terms.get(0));
-		PostingsList p2 = getPostings(terms.get(1));
-		
-		
-		result = phraseIntersect(p1,p2);
-		return result;
-	}
+
 	public PostingsList intersectionSearch(Query query){
 		System.out.println("inside intersection function");
 		Query sortedQuery = sortByIncreasedFrequency(query);
@@ -305,10 +367,10 @@ public class HashedIndex implements Index {
 		PostingsList answer = new PostingsList();
 		System.out.println(p1.getPostingsEntry());
 		System.out.println(p2.getPostingsEntry());
-		
+
 		ListIterator<PostingsEntry> p1It = p1.getPostingsEntry().listIterator();
 		ListIterator<PostingsEntry> p2It = p2.getPostingsEntry().listIterator();
-		
+
 		while(p1It.hasNext() && p2It.hasNext()){
 			int p1docID = p1It.next().getdocID();
 			int p2docID = p2It.next().getdocID();
@@ -317,12 +379,12 @@ public class HashedIndex implements Index {
 			if(p1docID == p2docID){
 				//should check whether 2 words occur one after the other. 
 				//If so, then add postion of second word in the answer
-				
+
 				ListIterator<Integer> posList1 = p1It.next().getPositionsList().listIterator();
 				ListIterator<Integer> posList2 = p2It.next().getPositionsList().listIterator();
 				p1It.previous();
 				p2It.previous();
-				
+
 				System.out.println("\n\nDocID: "+p2docID+"\nFirst word positions:");
 				while(posList1.hasNext()){
 					System.out.print(posList1.next() + " ");
@@ -342,7 +404,7 @@ public class HashedIndex implements Index {
 					p2It.previous();
 					while(posList2.hasNext()){
 						int posP2 = posList2.next();
-						
+
 						if(posP2 == posP1+1){
 							if(answer.isDocPresent(p2docID, posP2)){
 								continue;
@@ -364,7 +426,7 @@ public class HashedIndex implements Index {
 				p2It.next();
 			}
 		}
-		
+
 		return answer;
 	}
 	public PostingsList intersect(PostingsList p1, PostingsList p2){
@@ -373,13 +435,13 @@ public class HashedIndex implements Index {
 		LinkedList<PostingsEntry> p2List = p2.getPostingsEntry();
 		ListIterator<PostingsEntry> p1It = p1List.listIterator();
 		ListIterator<PostingsEntry> p2It = p2List.listIterator();
-		
-		
+
+
 		while(p1It.hasNext()  && p2It.hasNext()){
-		int p1docID = p1It.next().getdocID();
-		int p2docID = p2It.next().getdocID();
-		p1It.previous();
-		p2It.previous();
+			int p1docID = p1It.next().getdocID();
+			int p2docID = p2It.next().getdocID();
+			p1It.previous();
+			p2It.previous();
 			if(p1docID == p2docID ){
 				answer.addPostingEntry(p1docID,0);
 				p1It.next();
@@ -396,55 +458,55 @@ public class HashedIndex implements Index {
 		if(answer.size() != 0){
 			return answer;	
 		}
-		
+
 		return null;
 	}
-    public Query sortByIncreasedFrequency(Query query){
-    	Query sortedQuery = query.copy();
-    	int n = query.terms.size();
-    	//doing bubble sort
-    	boolean swapped = true;
-    	while(swapped == true){
-    		swapped = false;
-    		for(int i=1;i<n;i++){
-    			System.out.println("i = " + i);
-    			//printing the query list
-    			for(int j =0;j<sortedQuery.size();j++)
-    			{
-    				System.out.print(" " + sortedQuery.terms.get(j));
-    			}
-    			
-    			System.out.println("\n Before Swap, I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
-    			PostingsList i_1term = index.get(sortedQuery.terms.get(i-1));
-    			PostingsList iterm = index.get(sortedQuery.terms.get(i));
-    			int i_1termSize = 0;
-    			int itermSize = 0;
-    			if(i_1term != null){
-    				 i_1termSize = index.get(sortedQuery.terms.get(i-1)).size();
-    			}
-    			
-    			if(iterm != null)
-    			{
-    				itermSize = index.get(sortedQuery.terms.get(i)).size();
-    			}
-    			
-    			if(i_1termSize > itermSize ){
-    				//swap i-1 and i
-    				String tmpToken = sortedQuery.terms.get(i-1);
-    				Double tmpWeight = sortedQuery.weights.get(i-1);
-    				String ith_tmpToken = sortedQuery.terms.get(i);
-    				Double ith_tmpWeight = sortedQuery.weights.get(i);
-    				sortedQuery.terms.set(i-1,ith_tmpToken);
-    				sortedQuery.weights.set(i-1,ith_tmpWeight);
-    				sortedQuery.terms.set(i,tmpToken);
-    				sortedQuery.weights.set(i,tmpWeight);
-    				System.out.println("I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
-    				swapped = true;
-    			}
-    		}
-    	}
-    	return sortedQuery;
-    }
+	public Query sortByIncreasedFrequency(Query query){
+		Query sortedQuery = query.copy();
+		int n = query.terms.size();
+		//doing bubble sort
+		boolean swapped = true;
+		while(swapped == true){
+			swapped = false;
+			for(int i=1;i<n;i++){
+				System.out.println("i = " + i);
+				//printing the query list
+				for(int j =0;j<sortedQuery.size();j++)
+				{
+					System.out.print(" " + sortedQuery.terms.get(j));
+				}
+
+				System.out.println("\n Before Swap, I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+				PostingsList i_1term = index.get(sortedQuery.terms.get(i-1));
+				PostingsList iterm = index.get(sortedQuery.terms.get(i));
+				int i_1termSize = 0;
+				int itermSize = 0;
+				if(i_1term != null){
+					i_1termSize = index.get(sortedQuery.terms.get(i-1)).size();
+				}
+
+				if(iterm != null)
+				{
+					itermSize = index.get(sortedQuery.terms.get(i)).size();
+				}
+
+				if(i_1termSize > itermSize ){
+					//swap i-1 and i
+					String tmpToken = sortedQuery.terms.get(i-1);
+					Double tmpWeight = sortedQuery.weights.get(i-1);
+					String ith_tmpToken = sortedQuery.terms.get(i);
+					Double ith_tmpWeight = sortedQuery.weights.get(i);
+					sortedQuery.terms.set(i-1,ith_tmpToken);
+					sortedQuery.weights.set(i-1,ith_tmpWeight);
+					sortedQuery.terms.set(i,tmpToken);
+					sortedQuery.weights.set(i,tmpWeight);
+					System.out.println("I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+					swapped = true;
+				}
+			}
+		}
+		return sortedQuery;
+	}
 	/**
 	 *  No need for cleanup in a HashedIndex.
 	 */
@@ -454,6 +516,6 @@ public class HashedIndex implements Index {
 	@Override
 	public void writeIntoMapping() {
 		// TODO Auto-generated method stub
-		
+
 	}
 }

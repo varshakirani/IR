@@ -1,0 +1,516 @@
+/*  
+ *   This file is part of the computer assignment for the
+ *   Information Retrieval course at KTH.
+ * 
+ *   First version:  Johan Boye, 2010
+ *   Second version: Johan Boye, 2012
+ *   Additions: Hedvig Kjellström, 2012-14
+ */  
+
+
+package ir;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.Map;
+import java.util.TreeSet;
+
+import com.ibm.icu.text.Collator;
+
+
+/**
+ *   Implements an inverted index as a Hashtable from words to PostingsLists.
+ */
+public class HashedIndex implements Index {
+
+	/** The index as a hashtable. */
+	private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
+
+	public HashMap<Integer,Double> pageRankList = new HashMap<Integer,Double>();
+	int noOfCollection = 0;
+	public void setNoOfCollection(int num){
+		noOfCollection = num;
+	}
+	public int getNoOfCollection(){
+		return noOfCollection;
+	}
+	/**
+	 *  Inserts this token in the index.
+	 */
+	public void insert( String token, int docID, int offset ) {
+		// if already token is present, only docID has to appended to the token
+		//		double score = 0;
+		//		System.out.println("docID" + docID);
+		PostingsList postingsList = index.get(token);
+		if(postingsList != null){
+			//Should check whether docID is already present in the postingsList, 
+			//if it is present then update the positionList  in the postingsEntry
+			PostingsEntry entry = postingsList.getPostingsEntry().getLast();
+			if(entry.getdocID() == docID){
+				entry.addPosition(offset);
+				return;
+			}
+			//			if(postingsList.isDocPresent(docID,offset)){
+			//				return;
+			//			}
+			else{
+				postingsList.updateList(docID, 0,offset);
+
+			}
+		}
+		else {
+			postingsList = new PostingsList(docID,0,offset);
+		}
+		index.put(token,postingsList);
+		//		System.out.println("token: "+token+" list size: "+ index.get(token).size());
+		readPageRank();
+	}
+
+	/**
+	 * Sorts the indexs according to tokens 
+	 * */
+	public void sortDict(){
+		//		sortedKeys = new TreeSet<String>(index.keySet());
+	}
+
+	public int indexSize(){
+		return index.keySet().size();
+	}
+	/**
+	 *  Returns all the words in the index.
+	 */
+	public Iterator<String> getDictionary() {
+		// 
+		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
+		//
+		if (index.keySet() != null){
+			return new TreeSet<String>(index.keySet()).iterator();
+			//			return index.keySet().iterator();
+		}
+		return null;
+	}
+
+	public void readPageRank(){
+		try{
+			String homeDir = "/home/varsha/KTH courses/Search Engine And Information Retrieval/Assignments/LAB1/IR/src/pagerank";
+			File file = new File(homeDir+"pageRankCompleteList.txt");
+			int docID;
+			double pageRank;
+			if(file.exists()){
+				FileReader fr = new FileReader(file);
+				BufferedReader br = new BufferedReader(fr);
+				String line;
+				while((line = br.readLine()) != null ){
+					String[] parts = line.split(":");
+					docID = Integer.parseInt(parts[0]);
+					pageRank = Double.parseDouble(parts[1]);
+					pageRankList.put(docID, pageRank);
+				}
+			}
+		}
+		catch(IOException e){
+			
+		}
+	}
+
+	/**
+	 *  Returns the postings for a specific term, or null
+	 *  if the term is not in the index.
+	 */
+	public PostingsList getPostings( String token ) {
+		// 
+		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
+		//
+//		PostingsList postingsList = new PostingsList(index.get(token));
+		PostingsList postingsList = index.get(token);
+		if(postingsList != null){
+			//			System.out.println("token: "+token+" list size: "+ index.get(token).size());
+			//			System.out.println("for token: "+token);
+			postingsList.printDocID();
+			return postingsList;
+		}
+		return null;
+	}
+
+
+	/**
+	 *  Searches the index for postings matching the query.
+	 */
+	public PostingsList search( Query query, int queryType, int rankingType, int structureType ) {
+		//QueryType = 0 Intersection Query
+		//QueryType = 1 Phrase Query
+		//QueryType = 2 Ranked Retrieval
+//		readPageRank();
+		Query sortedQuery = query;
+		if(queryType == 0){
+			sortedQuery = sortByIncreasedFrequency(query);
+		}
+		LinkedList<String> terms = sortedQuery.terms;
+		LinkedList<String> completeTerms =(LinkedList<String>) sortedQuery.terms.clone();
+		PostingsList result = getPostings(sortedQuery.terms.poll());
+		for(PostingsEntry entry:result.getPostingsEntry()){
+			
+			System.out.println(entry.docID + "   " + entry.getScore());
+			
+		}
+		if(queryType == 2){
+			if(rankingType == Index.TF_IDF){
+				PostingsList rankedResult = new PostingsList();
+				rankedResult = cosineScore(completeTerms,rankedResult,false);
+				Collections.sort(rankedResult.getPostingsEntry());
+				return rankedResult;
+			}
+			else if (rankingType == Index.RANKED_QUERY){
+				PostingsList rankedResult = new PostingsList();
+				rankedResult = pageRankAlone(completeTerms,rankedResult);
+				Collections.sort(rankedResult.getPostingsEntry());
+				return rankedResult;
+			}
+			else if (rankingType == Index.COMBINATION){
+				PostingsList rankedResult = new PostingsList();
+				rankedResult = cosineScore(completeTerms,rankedResult,true);
+				Collections.sort(rankedResult.getPostingsEntry());
+				return rankedResult;
+			}
+			
+		}	
+
+		terms = sortedQuery.terms;
+		int termSize = 0;
+		int resultSize = 0;
+		if(terms != null){
+			termSize = terms.size();
+		}
+		if(result !=null){
+			resultSize = result.size();
+		}
+
+		while(termSize != 0 && resultSize != 0){
+			System.out.print("sortedQuery: ");
+			//printing the query list
+			int sortedQuerySize = 0;
+			if(sortedQuery != null){
+				sortedQuerySize = sortedQuery.size();
+			}
+			for(int j =0;j<sortedQuerySize;j++)
+			{
+				System.out.print(" " + sortedQuery.terms.get(j));
+			}
+
+			// calling intersection function for different querytypes
+			if(queryType == 0){
+				result = intersect(result,getPostings(sortedQuery.terms.poll()));	
+				terms = sortedQuery.terms;
+				if(terms != null){
+					termSize = terms.size();
+				} else termSize = 0;
+				if(result !=null){
+					resultSize = result.size();
+				} else resultSize = 0;
+			}
+			else if(queryType == 1){
+				result = phraseIntersect(result,getPostings(sortedQuery.terms.poll()));
+				terms = sortedQuery.terms;
+				if(terms != null){
+					termSize = terms.size();
+				} else termSize = 0;
+				if(result !=null){
+					resultSize = result.size();
+				} else resultSize = 0;
+			}
+
+		}
+		for(String term : query.terms){
+			System.out.println("Document Frequency:"+getPostings(term).getDocumentFrequency()+"Frequency of first token indexed"+getPostings(term).getPostingsEntry().getFirst().getFrequency());}
+
+		return result;
+	
+	}
+
+	public PostingsList pageRankAlone(LinkedList<String> queryTerms,PostingsList rankedResult){
+		HashMap<Integer,Double> ScoreList = new HashMap<Integer,Double>();
+		for(String term:queryTerms){
+			PostingsList termPos = getPostings(term);
+			double scoreTmp = 0.0;
+			for(PostingsEntry entry:termPos.getPostingsEntry()){
+				scoreTmp += pageRankList.get(entry.docID);
+				if(ScoreList.containsKey(entry.docID)){
+					scoreTmp += ScoreList.get(entry.docID);
+					
+					ScoreList.put(entry.docID,scoreTmp);
+				}
+				else{
+					
+					ScoreList.put(entry.docID,scoreTmp);
+				}
+				scoreTmp = 0;
+			}
+			for(Integer docID:ScoreList.keySet())
+			{
+//				Double ScoreVal= ScoreList.get(docID)/ (double) docLengths.get(""+docID);
+//				ScoreList.put(docID, ScoreVal);
+				rankedResult.updateList(docID, ScoreList.get(docID), 0);			
+			}
+		}
+		return rankedResult;
+	}
+	public PostingsList cosineScore(LinkedList<String> queryTerms,PostingsList rankedResult,boolean combined )
+	{
+		HashMap<String,Integer> termFq = new HashMap<String,Integer>();
+		//term frequency
+
+		HashMap<Integer,Double> ScoreList = new HashMap<Integer,Double>();
+		for(String term : queryTerms){
+			if(termFq.containsKey(term)){
+				termFq.put(term,termFq.get(term)+1);
+			}
+			else{
+				termFq.put(term, 1);
+			}
+		}
+
+		double N = 20000;
+		for(String term : queryTerms){
+			
+			double termFreq = 0;
+			double w_tq = 0;
+			if(termFq.containsKey(term)){
+				termFreq = termFq.get(term);
+				PostingsList termPos = getPostings(term);
+				System.out.println(termPos.size());
+				double docFreq = termPos.size();
+				w_tq = termFreq * Math.log(N/docFreq);
+				double scoreTmp = 0;
+				for(PostingsEntry entry:termPos.getPostingsEntry()){
+					double wf_td = entry.getFrequency();
+					scoreTmp += wf_td * w_tq;
+					if(combined){
+						scoreTmp += pageRankList.get(entry.docID);
+					}
+					if(ScoreList.containsKey(entry.docID)){
+						scoreTmp += ScoreList.get(entry.docID);
+						
+						ScoreList.put(entry.docID,scoreTmp);
+					}
+					else{
+						
+						ScoreList.put(entry.docID,scoreTmp);
+					}
+					scoreTmp = 0;
+				}
+
+			}
+		}
+		for(Integer docID:ScoreList.keySet())
+		{
+			Double ScoreVal= ScoreList.get(docID)/ (double) docLengths.get(""+docID);
+			ScoreList.put(docID, ScoreVal);
+			rankedResult.updateList(docID, ScoreList.get(docID), 0);			
+		}
+
+		return rankedResult;
+	}
+
+	public PostingsList intersectionSearch(Query query){
+		System.out.println("inside intersection function");
+		Query sortedQuery = sortByIncreasedFrequency(query);
+		LinkedList<String> terms = sortedQuery.terms;
+		PostingsList result = getPostings(sortedQuery.terms.poll());
+		terms = sortedQuery.terms;
+		int termSize = 0;
+		int resultSize = 0;
+		if(terms != null){
+			termSize = terms.size();
+		}
+		if(result !=null){
+			resultSize = result.size();
+		}
+		while(termSize != 0 && resultSize != 0){
+			System.out.print("sortedQuery: ");
+			//printing the query list
+			int sortedQuerySize = 0;
+			if(sortedQuery != null){
+				sortedQuerySize = sortedQuery.size();
+			}
+			for(int j =0;j<sortedQuerySize;j++)
+			{
+				System.out.print(" " + sortedQuery.terms.get(j));
+			}
+			result = intersect(result,getPostings(sortedQuery.terms.poll()));
+			terms = sortedQuery.terms;
+			if(terms != null){
+				termSize = terms.size();
+			} else termSize = 0;
+			if(result !=null){
+				resultSize = result.size();
+			} else resultSize = 0;
+		}
+		return result;
+	}
+
+	public PostingsList phraseIntersect(PostingsList p1,PostingsList p2){
+		PostingsList answer = new PostingsList();
+		System.out.println(p1.getPostingsEntry());
+		System.out.println(p2.getPostingsEntry());
+
+		ListIterator<PostingsEntry> p1It = p1.getPostingsEntry().listIterator();
+		ListIterator<PostingsEntry> p2It = p2.getPostingsEntry().listIterator();
+
+		while(p1It.hasNext() && p2It.hasNext()){
+			int p1docID = p1It.next().getdocID();
+			int p2docID = p2It.next().getdocID();
+			p1It.previous();
+			p2It.previous();
+			if(p1docID == p2docID){
+				//should check whether 2 words occur one after the other. 
+				//If so, then add postion of second word in the answer
+
+				ListIterator<Integer> posList1 = p1It.next().getPositionsList().listIterator();
+				ListIterator<Integer> posList2 = p2It.next().getPositionsList().listIterator();
+				p1It.previous();
+				p2It.previous();
+
+				System.out.println("\n\nDocID: "+p2docID+"\nFirst word positions:");
+				while(posList1.hasNext()){
+					System.out.print(posList1.next() + " ");
+				}
+				posList1 = p1It.next().getPositionsList().listIterator();
+				System.out.println("\nSecond word positions:");
+				while(posList2.hasNext()){
+					System.out.print(posList2.next() + " ");
+				}
+				posList2 = p2It.next().getPositionsList().listIterator();
+				p1It.previous();
+				p2It.previous();
+				while(posList1.hasNext()){
+					int posP1 = posList1.next();
+					posList1.previous();
+					posList2 = p2It.next().getPositionsList().listIterator();
+					p2It.previous();
+					while(posList2.hasNext()){
+						int posP2 = posList2.next();
+
+						if(posP2 == posP1+1){
+							if(answer.isDocPresent(p2docID, posP2)){
+								continue;
+							}
+							else{
+								answer.updateList(p2docID, 0, posP2);
+							}
+						}
+					}
+					posList1.next();
+				}
+				p1It.next();
+				p2It.next();	
+			}
+			else if(p1docID < p2docID){
+				p1It.next();
+			}
+			else {
+				p2It.next();
+			}
+		}
+
+		return answer;
+	}
+	public PostingsList intersect(PostingsList p1, PostingsList p2){
+		PostingsList answer = new PostingsList();
+		LinkedList<PostingsEntry> p1List = p1.getPostingsEntry();
+		LinkedList<PostingsEntry> p2List = p2.getPostingsEntry();
+		ListIterator<PostingsEntry> p1It = p1List.listIterator();
+		ListIterator<PostingsEntry> p2It = p2List.listIterator();
+
+
+		while(p1It.hasNext()  && p2It.hasNext()){
+			int p1docID = p1It.next().getdocID();
+			int p2docID = p2It.next().getdocID();
+			p1It.previous();
+			p2It.previous();
+			if(p1docID == p2docID ){
+				answer.addPostingEntry(p1docID,0);
+				p1It.next();
+				p2It.next();
+			}
+			else if(p1docID < p2docID){
+				p1It.next();
+			}
+			else {
+				p2It.next();
+			}
+
+		}
+		if(answer.size() != 0){
+			return answer;	
+		}
+
+		return null;
+	}
+	public Query sortByIncreasedFrequency(Query query){
+		Query sortedQuery = query.copy();
+		int n = query.terms.size();
+		//doing bubble sort
+		boolean swapped = true;
+		while(swapped == true){
+			swapped = false;
+			for(int i=1;i<n;i++){
+				System.out.println("i = " + i);
+				//printing the query list
+				for(int j =0;j<sortedQuery.size();j++)
+				{
+					System.out.print(" " + sortedQuery.terms.get(j));
+				}
+
+				System.out.println("\n Before Swap, I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+				PostingsList i_1term = index.get(sortedQuery.terms.get(i-1));
+				PostingsList iterm = index.get(sortedQuery.terms.get(i));
+				int i_1termSize = 0;
+				int itermSize = 0;
+				if(i_1term != null){
+					i_1termSize = index.get(sortedQuery.terms.get(i-1)).size();
+				}
+
+				if(iterm != null)
+				{
+					itermSize = index.get(sortedQuery.terms.get(i)).size();
+				}
+
+				if(i_1termSize > itermSize ){
+					//swap i-1 and i
+					String tmpToken = sortedQuery.terms.get(i-1);
+					Double tmpWeight = sortedQuery.weights.get(i-1);
+					String ith_tmpToken = sortedQuery.terms.get(i);
+					Double ith_tmpWeight = sortedQuery.weights.get(i);
+					sortedQuery.terms.set(i-1,ith_tmpToken);
+					sortedQuery.weights.set(i-1,ith_tmpWeight);
+					sortedQuery.terms.set(i,tmpToken);
+					sortedQuery.weights.set(i,tmpWeight);
+					System.out.println("I-1 token: "+sortedQuery.terms.get(i-1)+" "+"I token: "+sortedQuery.terms.get(i));
+					swapped = true;
+				}
+			}
+		}
+		return sortedQuery;
+	}
+	/**
+	 *  No need for cleanup in a HashedIndex.
+	 */
+	public void cleanup() {
+	}
+
+	@Override
+	public void writeIntoMapping() {
+		// TODO Auto-generated method stub
+
+	}
+}

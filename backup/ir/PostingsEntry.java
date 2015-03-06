@@ -14,7 +14,7 @@ import java.util.LinkedList;
 public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     
     public int docID;
-    public double score;
+    public double score = 0;
     public int frequency;
 
     /**

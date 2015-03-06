@@ -19,11 +19,21 @@ public class PostingsList implements Serializable {
 	/** The postings list as a linked list. */
 	private LinkedList<PostingsEntry> list = new LinkedList<PostingsEntry>();
 	
+	//Copy Constructor//
+	public PostingsList(PostingsList PosList){
+		this.list = new LinkedList<PostingsEntry>(PosList.getPostingsEntry());
+	
+	}
+	
+	
 	//	private double score = 0;
+	
+	
 	
 	/**  Number of postings in this list  */
 	public int size() {
 		return list.size();
+		
 	}
 
 	public int getDocumentFrequency(){

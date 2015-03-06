@@ -34,7 +34,7 @@ public interface Index {
 	
     public HashMap<String, String> docIDs = new HashMap<String,String>();
     public HashMap<String,Integer> docLengths = new HashMap<String,Integer>();
-
+    public static final int dirSize = 0;
     public void insert( String token, int docID, int offset );
     public void sortDict();
     public Iterator<String> getDictionary();

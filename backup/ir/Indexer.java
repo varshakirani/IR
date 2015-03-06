@@ -82,7 +82,6 @@ public class Indexer {
 
 	/* ----------------------------------------------- */
 
-
 	/**
 	 *  Tokenizes and indexes the file @code{f}. If @code{f} is a directory,
 	 *  all its files and subdirectories are recursively processed.
